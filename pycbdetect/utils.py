@@ -182,9 +182,14 @@ def get_image_patch_with_mask(img, mask, u, v, r):
 def box_filter(img, kernel_radius):
     """Box (uniform) filter with boundary handling identical to C++ version.
 
+    Port of box_filter() from image_normalization_and_gradients.cc.
+    Uses a separable approach: vertical sliding window accumulated in buf[],
+    then horizontal sliding window applied via delayed-division strategy
+    directly on the result buffer.
+
     Args:
         img: 2D numpy array (H x W, float64)
-        kernel_radius: half-kernel size
+        kernel_radius: half-kernel size (used for both X and Y direction)
 
     Returns:
         Blurred 2D array.
@@ -196,13 +201,14 @@ def box_filter(img, kernel_radius):
     buf = np.zeros(w, dtype=np.float64)
     count_buf = np.zeros(w, dtype=np.int64)
 
-    # Initialize vertical accumulation
+    # Vertical initialization: accumulate rows 0..min(ky, h-2)
     for j in range(min(ky, h - 1)):
         buf += img[j]
         count_buf += 1
 
     result = np.zeros_like(img)
     for j in range(h):
+        # Slide vertical window
         if j > ky:
             buf -= img[j - ky - 1]
             count_buf -= 1
@@ -210,29 +216,26 @@ def box_filter(img, kernel_radius):
             buf += img[j + ky]
             count_buf += 1
 
-        # Horizontal scan
-        col_sum = 0.0
-        cnt = 0
+        # Horizontal scan – delayed division (identical to C++)
+        # Step 1: compute sum for column 0
+        count = 0
         for i in range(min(kx, w - 1) + 1):
-            col_sum += buf[i]
-            cnt += count_buf[i]
+            result[j, 0] += buf[i]
+            count += count_buf[i]
 
-        result[j, 0] = col_sum / cnt if cnt > 0 else 0.0
-
+        # Step 2: slide horizontally, storing raw sums and dividing later
         for i in range(1, w):
-            prev_sum = col_sum
-            prev_cnt = cnt
-            result[j, i] = prev_sum
-            result[j, i - 1] = result[j, i - 1] / prev_cnt if prev_cnt > 0 else 0.0
-
+            result[j, i] = result[j, i - 1]
+            result[j, i - 1] /= count if count != 0 else 1.0
             if i > kx:
-                col_sum -= buf[i - kx - 1]
-                cnt -= count_buf[i - kx - 1]
+                result[j, i] -= buf[i - kx - 1]
+                count -= count_buf[i - kx - 1]
             if i + kx < w:
-                col_sum += buf[i + kx]
-                cnt += count_buf[i + kx]
+                result[j, i] += buf[i + kx]
+                count += count_buf[i + kx]
 
-        result[j, w - 1] = col_sum / cnt if cnt > 0 else 0.0
+        # Last column needs explicit division
+        result[j, w - 1] /= count if count != 0 else 1.0
 
     return result
 
