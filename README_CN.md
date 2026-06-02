@@ -11,6 +11,7 @@
 `pycbdetect` 实现了完整的角点检测和标定板组装流程，原始算法由 C++ 开发，现以纯 Python 重写，运行时仅依赖 **NumPy** 和 **SciPy**。无需编译 C++ 扩展代码，可在任何支持 Python 3.9+ 的平台无缝部署。
 
 支持的标定图案：
+
 - **棋盘格**（Checkerboard）——经典黑白交替方格阵列
 - **三角网格**（Deltille）——三角形密铺图案，适用于鲁棒标定
 
@@ -35,7 +36,7 @@
 pip install pycbdetect
 
 # 或克隆仓库本地安装
-git clone https://github.com/ftdlyc/libcbdetect.git
+git clone https://github.com/BIGBIGBrotherAI/pycbdetect.git
 cd libcbdetect/pycbdetect
 pip install .
 ```
@@ -64,6 +65,7 @@ print(f"检测到 {len(corners.p)} 个角点")
 ```
 
 每个检测到的角点包含以下属性：
+
 - `.p[i]` — 亚像素坐标 `(x, y)`，类型为 `np.ndarray`
 - `.r[i]` — 使用的检测半径
 - `.v1[i]`, `.v2[i]` — 估计的边缘方向向量
@@ -133,87 +135,88 @@ plot_boards(img, corners, boards)
 
 ### 核心函数
 
-| 函数 | 签名 | 说明 |
-|---|---|---|
-| `find_corners` | `find_corners(img, corners=None, params=None)` | 执行完整的角点检测流水线 |
-| `boards_from_corners` | `boards_from_corners(img, corners, boards=None, params=None)` | 将角点分组为结构化标定板 |
-| `plot_corners` | `plot_corners(img, corners, title="角点")` | 显示角点叠加图（需 matplotlib） |
-| `plot_boards` | `plot_boards(img, corners, boards, title="标定板")` | 显示标定板叠加图（需 matplotlib） |
+| 函数                    | 签名                                                            | 说明                              |
+| ----------------------- | --------------------------------------------------------------- | --------------------------------- |
+| `find_corners`        | `find_corners(img, corners=None, params=None)`                | 执行完整的角点检测流水线          |
+| `boards_from_corners` | `boards_from_corners(img, corners, boards=None, params=None)` | 将角点分组为结构化标定板          |
+| `plot_corners`        | `plot_corners(img, corners, title="角点")`                    | 显示角点叠加图（需 matplotlib）   |
+| `plot_boards`         | `plot_boards(img, corners, boards, title="标定板")`           | 显示标定板叠加图（需 matplotlib） |
 
 ### 数据结构
 
 #### `Params` — 配置类
 
-| 参数名 | 类型 | 默认值 | 说明 |
-|---|---|---|---|
-| `show_processing` | `bool` | `True` | 是否向标准错误输出各阶段处理进度 |
-| `norm` | `bool` | `False` | 是否应用图像归一化预处理 |
-| `norm_half_kernel_size` | `int` | `31` | 归一化滤波器的半核大小 |
-| `polynomial_fit` | `bool` | `True` | 是否启��多项式曲面拟合并进行亚像素精度优化 |
-| `polynomial_fit_half_kernel_size` | `int` | `4` | 多项式拟合的窗口半尺寸 |
-| `init_loc_thr` | `float` | `0.01` | 初始角点位置的接受阈值 |
-| `score_thr` | `float` | `0.01` | 保留角点的最低质量分 |
-| `strict_grow` | `bool` | `True` | 严格模式的标定板扩张策略 |
-| `overlay` | `bool` | `False` | 允许重叠的标定板假设 |
-| `occlusion` | `bool` | `True` | 支持部分遮挡的标定板 |
-| `detect_method` | `DetectMethod` | `HessianResponse` | 候选角点初始化方法 |
-| `corner_type` | `CornerType` | `SaddlePoint` | 目标角点拓扑类型 |
-| `radius` | `List[int]` | `[5, 7]` | 多尺度检测所用的半径列表 |
+| 参数名                              | 类型             | 默认值              | 说明                                         |
+| ----------------------------------- | ---------------- | ------------------- | -------------------------------------------- |
+| `show_processing`                 | `bool`         | `True`            | 是否向标准错误输出各阶段处理进度             |
+| `norm`                            | `bool`         | `False`           | 是否应用图像归一化预处理                     |
+| `norm_half_kernel_size`           | `int`          | `31`              | 归一化滤波器的半核大小                       |
+| `polynomial_fit`                  | `bool`         | `True`            | 是否启��多项式曲面拟合并进行亚像素精度优化 |
+| `polynomial_fit_half_kernel_size` | `int`          | `4`               | 多项式拟合的窗口半尺寸                       |
+| `init_loc_thr`                    | `float`        | `0.01`            | 初始角点位置的接受阈值                       |
+| `score_thr`                       | `float`        | `0.01`            | 保留角点的最低质量分                         |
+| `strict_grow`                     | `bool`         | `True`            | 严格模式的标定板扩张策略                     |
+| `overlay`                         | `bool`         | `False`           | 允许重叠的标定板假设                         |
+| `occlusion`                       | `bool`         | `True`            | 支持部分遮挡的标定板                         |
+| `detect_method`                   | `DetectMethod` | `HessianResponse` | 候选角点初始化方法                           |
+| `corner_type`                     | `CornerType`   | `SaddlePoint`     | 目标角点拓扑类型                             |
+| `radius`                          | `List[int]`    | `[5, 7]`          | 多尺度检测所用的半径列表                     |
 
 #### `DetectMethod` — 初始化策略枚举
 
-| 值 | 名称 | 说明 |
-|---|---|---|
-| `0` | `TemplateMatchFast` | 快速模板匹配（4 对角度组合） |
-| `1` | `TemplateMatchSlow` | 穷举模板匹配（大量角度组合） |
-| `2` | `HessianResponse` | 海森行列式响应法（推荐） |
-| `3` | `LocalizedRadonTransform` | 旋转模糊 Radon 变换 |
+| 值    | 名称                        | 说明                         |
+| ----- | --------------------------- | ---------------------------- |
+| `0` | `TemplateMatchFast`       | 快速模板匹配（4 对角度组合） |
+| `1` | `TemplateMatchSlow`       | 穷举模板匹配（大量角度组合） |
+| `2` | `HessianResponse`         | 海森行列式响应法（推荐）     |
+| `3` | `LocalizedRadonTransform` | 旋转模糊 Radon 变换          |
 
 #### `CornerType` — 角点拓扑类型枚举
 
-| 值 | 名称 | 说明 |
-|---|---|---|
-| `0` | `SaddlePoint` | 标准棋盘格角点（两条正交边） |
+| 值    | 名称                  | 说明                             |
+| ----- | --------------------- | -------------------------------- |
+| `0` | `SaddlePoint`       | 标准棋盘格角点（两条正交边）     |
 | `1` | `MonkeySaddlePoint` | 三角网格角点（三条对称分布的边） |
 
 #### `Corner` — 角点容器
 
-| 属性 | 类型 | 说明 |
-|---|---|---|
-| `p` | `List[np.ndarray]` | 每个角点的位置数组 `[x, y]` |
-| `r` | `List[int]` | 对应每次检测所使用的半径 |
-| `v1` | `List[np.ndarray]` | 第一条边缘的方向向量 |
-| `v2` | `List[np.ndarray]` | 第二条边缘的方向向量 |
-| `v3` | `List[np.ndarray]` | 第三条边缘方向（仅限三角网格模式） |
-| `score` | `List[float]` | 每个角点的质量评分 |
+| 属性      | 类型                 | 说明                               |
+| --------- | -------------------- | ---------------------------------- |
+| `p`     | `List[np.ndarray]` | 每个角点的位置数组 `[x, y]`      |
+| `r`     | `List[int]`        | 对应每次检测所使用的半径           |
+| `v1`    | `List[np.ndarray]` | 第一条边缘的方向向量               |
+| `v2`    | `List[np.ndarray]` | 第二条边缘的方向向量               |
+| `v3`    | `List[np.ndarray]` | 第三条边缘方向（仅限三角网格模式） |
+| `score` | `List[float]`      | 每个角点的质量评分                 |
 
 ##### 方法
+
 - `clear()` — 将所有属性重置为空列表
 
 #### `Board` — 已组装的标定板对象
 
-| 属性 | 类型 | 说明 |
-|---|---|---|
-| `idx` | `List[List[int]]` | 二维网格中的角点索引表（`-1` 表示未占用） |
-| `energy` | `List[List[List[float]]]` | 每单元的结构能量张量 |
-| `num` | `int` | 已占用的单元格数量 |
+| 属性       | 类型                        | 说明                                        |
+| ---------- | --------------------------- | ------------------------------------------- |
+| `idx`    | `List[List[int]]`         | 二维网格中的角点索引表（`-1` 表示未占用） |
+| `energy` | `List[List[List[float]]]` | 每单元的结构能量张量                        |
+| `num`    | `int`                     | 已占用的单元格数量                          |
 
 ### 内部模块
 
 高级用户可以按需直接导入底层模块：
 
-| 模块 | 用途 |
-|---|---|
-| `pycbdetect.imgproc` | 图像归一化和梯度计算 |
-| `pycbdetect.get_init_location` | 各类独立初始化策略的实现 |
-| `pycbdetect.filter_corners` | 扇区交替预过滤器 |
-| `pycbdetect.refine_corners` | 方向估计 + Gauss-Newton 重定位 |
-| `pycbdetect.polynomial_fit` | 锥形加权曲面拟合 |
-| `pycbdetect.score_corners` | 相关性打分与阈值裁剪 |
-| `pycbdetect.nms` | 密集型和稀疏型 NMS 例程 |
-| `pycbdetect.meanshift` | 基于 MeanShift 的直方图峰值搜索 |
-| `pycbdetect.board_helpers` | 标定板的初始化、生长、能量评估及过滤原语 |
-| `pycbdetect.utils` | 低层辅助工具（图像补丁提取、掩码构建、卷积等） |
+| 模块                             | 用途                                           |
+| -------------------------------- | ---------------------------------------------- |
+| `pycbdetect.imgproc`           | 图像归一化和梯度计算                           |
+| `pycbdetect.get_init_location` | 各类独立初始化策略的实现                       |
+| `pycbdetect.filter_corners`    | 扇区交替预过滤器                               |
+| `pycbdetect.refine_corners`    | 方向估计 + Gauss-Newton 重定位                 |
+| `pycbdetect.polynomial_fit`    | 锥形加权曲面拟合                               |
+| `pycbdetect.score_corners`     | 相关性打分与阈值裁剪                           |
+| `pycbdetect.nms`               | 密集型和稀疏型 NMS 例程                        |
+| `pycbdetect.meanshift`         | 基于 MeanShift 的直方图峰值搜索                |
+| `pycbdetect.board_helpers`     | 标定板的初始化、生长、能量评估及过滤原语       |
+| `pycbdetect.utils`             | 低层辅助工具（图像补丁提取、掩码构建、卷积等） |
 
 ## 测试
 
@@ -235,12 +238,13 @@ python -m pytest tests/ -v
 
 作为纯 Python 实现，`pycbdetect` 相比原始的 C++ 版本牺牲了一定的速度以换取便利性。在现代硬件上的典型耗时如下：
 
-| 操作 | 大约时间 |
-|---|---|
-| 角点检测（单张图片，640×480） | 1～5 秒 |
-| 标定板组装 | < 1 秒 |
+| 操作                           | 大约时间 |
+| ------------------------------ | -------- |
+| 角点检测（单张图片，640×480） | 1～5 秒  |
+| 标定板组装                     | < 1 秒   |
 
 降低延迟的建议：
+
 - 如果近似位置即可满足需求，可以关闭 `polynomial_fit`
 - 缩短 `radius` 列表长度（减少待评估的尺度数）
 - 改用 `DetectMethod.TemplateMatchFast` 替代默认的 `HessianResponse`
@@ -248,6 +252,7 @@ python -m pytest tests/ -v
 ## 变更记录
 
 ### v0.1.0 (2025-06)
+
 - 首次发行
 - 完整的角点检测流水线（初始化 → 过滤 → 精炼 → 评分 → NMS）
 - 基于能量驱动生长的标定板组装
@@ -256,13 +261,13 @@ python -m pytest tests/ -v
 
 ## 与其他方案的对比
 
-| 特性 | pycbdetect | opencv.calibrateCamera | calibra_tools |
-|---|---|---|---|
-| 纯 Python | ✅ | ❌（需 OpenCV 绑定） | ⚠️ 混合 |
-| 三角网格支持 | ✅ | ❌ | ❌ |
-| 亚像素精修 | ✅（迭代高斯牛顿法） | ✅ | ✅ |
-| 抗遮挡能力 | ✅ | 有限 | 因场景而异 |
-| 跨平台部署 | ✅（pip 一键装） | ⚠️ 二进制 wheel | ⚠️ |
+| 特性         | pycbdetect           | opencv.calibrateCamera | calibra_tools |
+| ------------ | -------------------- | ---------------------- | ------------- |
+| 纯 Python    | ✅                   | ❌（需 OpenCV 绑定）   | ⚠️ 混合     |
+| 三角网格支持 | ✅                   | ❌                     | ❌            |
+| 亚像素精修   | ✅（迭代高斯牛顿法） | ✅                     | ✅            |
+| 抗遮挡能力   | ✅                   | 有限                   | 因场景而异    |
+| 跨平台部署   | ✅（pip 一键装）     | ⚠️ 二进制 wheel      | ⚠️          |
 
 ## 贡献指南
 
@@ -278,8 +283,7 @@ python -m pytest tests/ -v
 
 ## 引用文献
 
-1. Geiger 等人, *"Automatic Camera and Range Sensor Calibration Using a Single Shot"*（单次拍摄下的自动相机与深度传感器标定）, ICRA 2012  
-   http://www.cvlibs.net/publications/GeigerEtAl_ICRA2012.pdf
+1. Geiger 等人, *"Automatic Camera and Range Sensor Calibration Using a Single Shot"*（单次拍摄下的自动相机与深度传感器标定）, ICRA 2012http://www.cvlibs.net/publications/GeigerEtAl_ICRA2012.pdf
 2. Schönbein 等人, *"Calibrating and Centering Quasi-Central Catadioptric Cameras"*, ICRA 2014
 3. Placht 等人, *"ROCHEDE: Robust Checkerboard Advanced Detection"*, ECCV 2014
 4. Ha 等人, *"Deltille Grids for Geometric Camera Calibration"*, ICCV 2017
