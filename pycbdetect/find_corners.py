@@ -30,26 +30,26 @@ def _grayscale_double(img):
 
 
 def _resize_nearest_scale(img, scale):
-    """Resize image by integer/fractional scale using nearest interpolation."""
-    h, w = img.shape[:2]
-    nh, nw = int(round(h * scale)), int(round(w * scale))
-    nc = img.shape[2] if len(img.shape) == 3 else 1
-    if nc > 1:
-        result = np.zeros((nh, nw, nc), dtype=img.dtype)
+    """Resize image by fractional scale using nearest-neighbour interpolation (pure NumPy)."""
+    shape = img.shape
+    ndim = img.ndim
+    oh, ow = shape[0], shape[1]
+    nh, nw = int(round(oh * scale)), int(round(ow * scale))
+    # Compute row/column indices by rounding the inverse-scaled floating-point coords.
+    rows = np.round(np.arange(nh) / scale).astype(np.intp)
+    cols = np.round(np.arange(nw) / scale).astype(np.intp)
+    # Clip to valid range (handles edge cases when round pushes index past boundary).
+    rows = np.clip(rows, 0, oh - 1)
+    cols = np.clip(cols, 0, ow - 1)
+    # Use advanced integer indexing: rows[:, None] broadcasts against cols[None, :].
+    idx = rows[:, None]   # shape (nh,)
+    jdx = cols[None, :]   # shape (nw,)
+    if ndim == 2:
+        return img[idx, jdx]
+    elif ndim == 3:
+        return img[idx, jdx, :]
     else:
-        result = np.zeros((nh, nw), dtype=img.dtype)
-    for axis_dim, (out_sz, in_sz) in enumerate(zip(result.shape[:2], img.shape[:2])):
-        ratio = in_sz / out_sz
-    # Simple approach: iterate output coords
-    for oy in range(nh):
-        for ox in range(nw):
-            sy = min(int(oy * h / nh), h - 1)
-            sx = min(int(ox * w / nw), w - 1)
-            if nc > 1:
-                result[oy, ox] = img[sy, sx]
-            else:
-                result[oy, ox] = img[sy, sx]
-    return result
+        raise ValueError(f"_resize_nearest_scale expects 2-D or 3-D array, got {ndim}-D")
 
 
 def _run_pipeline_on_scaled(img_orig_gray, scale, params):
