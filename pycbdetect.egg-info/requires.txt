@@ -1,0 +1,9 @@
+numpy>=1.19
+scipy>=1.5
+
+[dev]
+pytest
+flake8
+
+[viz]
+matplotlib

@@ -1,0 +1,115 @@
+Metadata-Version: 2.4
+Name: pycbdetect
+Version: 0.1.0
+Summary: Pure-Python checkerboard / deltille pattern detection library
+Home-page: https://github.com/ftdlyc/libcbdetect
+Author: Andreas Geiger (original MATLAB), ftdlyc (C++ port)
+Author-email: ftdlyc <yclu.cn@gmail.com>
+License: GPL-3.0-or-later
+Keywords: checkerboard,camera-calibration,computer-vision,deltille
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Image Recognition
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.19
+Requires-Dist: scipy>=1.5
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Provides-Extra: viz
+Requires-Dist: matplotlib; extra == "viz"
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
+# pycbdetect
+
+Pure-Python port of [libcbdetect](http://www.cvlibs.net/software/libcbdetect/) — fully automatic sub-pixel checkerboard / chessboard / deltille pattern detection for camera calibration.
+
+## Features
+
+- No compiled C++ extension — works anywhere Python 3.9+ runs
+- Minimal runtime deps: **NumPy** + **SciPy** only
+- Same algorithms as the original C++ library:
+  - Template Matching (fast / slow)
+  - Hessian Response
+  - Localised Radon Transform
+  - Zero-crossing + angular-mode filtering
+  - Iterative sub-pixel refinement
+  - Quadratic / cubic polynomial surface fit
+  - Correlation-based scoring + NMS
+  - Board assembly with energy-driven growth
+
+## Installation
+
+```bash
+pip install git+https://github.com/YOUR_USER/pycbdetect.git
+# or locally:
+cd pycbdetect
+pip install .
+```
+
+For interactive visualisation add the optional `viz` extra:
+
+```bash
+pip install ".[viz]"
+```
+
+## Quick Start
+
+```python
+import numpy as np
+from pycbdetect import Params, find_corners, boards_from_corners
+
+# Load image (any uint8 RGB or greyscale source)
+img = np.load("my_calibration_shot.npy")   # shape (H,W,3) or (H,W)
+
+params = Params(show_processing=True)
+corners = find_corners(img, params=params)
+
+print(f"Detected {len(corners.p)} corners")
+
+boards = boards_from_corners(img, corners, params=params)
+print(f"Assembled {len(boards)} checkerboard(s)")
+```
+
+### Visualising Results
+
+```python
+from pycbdetect import plot_corners, plot_boards
+
+plot_corners(img, corners, title="Detected Corners")
+plot_boards(img, corners, boards, title="Checkerboards")
+```
+
+*(requires `matplotlib`, installed via `pip install "pycbdetect[viz]"`)*
+
+## API Reference
+
+| Symbol | Description |
+|---|---|
+| `Params(...)` | Configuration data-class with sensible defaults |
+| `find_corners(img, *, params)` | Run full corner-detection pipeline |
+| `boards_from_corners(img, corners, *, params)` | Group corners into boards |
+| `plot_corners(img, corners, title)` | Overlay corner markers |
+| `plot_boards(img, corners, boards, title)` | Overlay board outlines |
+
+See [`config.py`](pycbdetect/config.py) for the full `Params` signature.
+
+## References
+
+1. Geiger et al., *Automatic Camera and Range Sensor Calibration Using a Single Shot*, ICRA 2012
+2. Schönbein et al., *Calibrating and Centering Quasi-Central Catadioptric Cameras*, ICRA 2014
+3. Placht et al., *ROCHEDE: Robust Checkerboard Advanced Detection*, ECCV 2014
+4. Ha et al., *Deltille Grids for Geometric Camera Calibration*, ICCV 2017
+5. Duda & Frese, *Accurate Detection and Localisation of Checkerboard Corners*, BMVC 2018
+
+## Licence
+
+GNU GPL v3 or later (same licence as the original libcbdetect).
