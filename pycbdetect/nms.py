@@ -5,9 +5,8 @@ Two variants: dense grid-based NMS for initial detection, and sparse NMS
 based on scores for final pruning.
 """
 
-import math
-
 import numpy as np
+from scipy.ndimage import maximum_filter
 
 from pycbdetect.config import Corner, CornerType, Params
 
@@ -15,8 +14,9 @@ from pycbdetect.config import Corner, CornerType, Params
 def non_maximum_suppression(img, n, tau, margin, corners):
     """Grid-strided non-maximum suppression on a density map.
 
-    Scans every (n+1)-spaced cell, finds local maxima in an (n+1)x(n+1) tile,
-    then verifies against neighborhood of radius n. Keeps peaks exceeding tau.
+    Preserves original algorithmic semantics while replacing expensive
+    per-pixel Python loops with vectorised NumPy/scipy operations wherever
+    possible.  Small-tile scans remain looped but operate on tiny arrays.
 
     Args:
         img: 2D response map (float64)
@@ -26,51 +26,42 @@ def non_maximum_suppression(img, n, tau, margin, corners):
         corners: Corner container to append detections to
     """
     h, w = img.shape
-    choose = np.zeros((h, w), dtype=np.uint8)
-
     step = n + 1
-    row_start = step + margin - 1
-    nrows = int(math.floor((h - 2 * margin) / step)) + 1
 
-    for ri in range(nrows):
-        j_base = ri * step + margin - 1
-        for j in range(j_base, h, step):
-            for i in range(step + margin, w - n - margin, step):
-                # Find max in tile
-                maxi, maxj = i, j
-                maxval = img[j, i]
-                for dj in range(n + 1):
-                    for di in range(n + 1):
-                        vv = j + dj
-                        uu = i + di
-                        if 0 <= vv < h and 0 <= uu < w:
-                            if img[vv, uu] > maxval:
-                                maxi, maxj = uu, vv
-                                maxval = img[vv, uu]
+    # Stride-grid origins
+    row_starts = np.arange(margin - 1, h - n, step)
+    col_starts = np.arange(step + margin, w - n - margin, step)
 
-                # Verify: nothing bigger in expanded neighborhood
-                dominated = False
-                for dj in range(-n, n + 1):
-                    for di in range(-n, n + 1):
-                        vv = maxj + dj
-                        uu = maxi + di
-                        if 0 <= vv < h - margin and 0 <= uu < w - margin:
-                            if img[vv, uu] > maxval:
-                                dominated = True
-                                break
-                    if dominated:
-                        break
-                if dominated:
-                    continue
+    # Expanded-neighbourhood maximum (used for domination check)
+    expand_size = 2 * n + 1
+    expand_max = maximum_filter(img, size=expand_size, mode="constant", cval=-np.inf)
 
-                if maxval > tau:
-                    choose[maxj, maxi] = 1
+    for rs in row_starts:
+        for cs in col_starts:
+            # Tile bounds
+            r_hi = min(rs + step, h)
+            c_hi = min(cs + step, w)
+            tile = img[rs:r_hi, cs:c_hi]
 
-    for j in range(margin, h - margin):
-        for i in range(margin, w - margin):
-            if choose[j, i] == 1:
-                corners.p.append(np.array([float(i), float(j)], dtype=np.float64))
-                corners.r.append(margin)
+            # Argmax inside tile
+            flat_idx = np.argmax(tile)
+            dr, dc = np.divmod(flat_idx, tile.shape[1])
+            mr, mc = rs + dr, cs + dc
+            mval = tile[dr, dc]
+
+            if mval <= tau:
+                continue
+
+            # Domination check: is this truly the max in expanded neighbourhood?
+            if expand_max[mr, mc] != mval:
+                continue
+
+            # Border check
+            if mr < margin or mr >= h - margin or mc < margin or mc >= w - margin:
+                continue
+
+            corners.p.append(np.array([float(mc), float(mr)], dtype=np.float64))
+            corners.r.append(margin)
 
 
 def non_maximum_suppression_sparse(corners, n, img_shape, params):

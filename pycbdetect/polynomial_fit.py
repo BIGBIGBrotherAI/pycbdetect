@@ -43,7 +43,7 @@ def _build_design_matrix(r, nz_count, degree_order):
     degree_order=3 → Ax³ + Ax²y + Axy² + Ay³ + Bx² + Bxy + By² + Cx + Dy + E  (10 coefs)
     """
     sz = 2 * r + 1
-    mask_inner = np.zeros((sz, sz), dtype=np.bool_)
+    mask_inner = np.zeros((sz, sz), dtype=bool)
     nz_local = 0
     for i in range(sz):
         for j in range(sz):

@@ -28,7 +28,7 @@ setup(
         "Topic :: Scientific/Engineering :: Image Recognition",
     ],
     install_requires=[
-        "numpy>=1.19,<2",
+        "numpy>=1.19",
         "scipy>=1.5",
     ],
 )
